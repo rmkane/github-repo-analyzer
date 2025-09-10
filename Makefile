@@ -33,6 +33,12 @@ test: ## Run tests
 test-cov: ## Run tests with coverage
 	venv/bin/pytest --cov=src/github_repo_analyzer --cov-report=html --cov-report=term-missing
 
+test-unit: ## Run unit tests only
+	venv/bin/pytest tests/test_api.py
+
+test-integration: ## Run integration tests (requires GITHUB_TOKEN)
+	venv/bin/pytest tests/test_cli.py
+
 lint: ## Run linting checks
 	venv/bin/flake8 --max-line-length=88 src/github_repo_analyzer tests
 	venv/bin/mypy src/github_repo_analyzer

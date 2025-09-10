@@ -1,14 +1,14 @@
 """GitHub API client for repository analysis."""
 
+import logging
 import os
 from typing import Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
 from pydantic import BaseModel, Field
-from rich.console import Console
 
-console = Console()
+logger = logging.getLogger(__name__)
 
 
 class Repository(BaseModel):
@@ -93,7 +93,11 @@ class GitHubAPI:
             return [Repository(**repo) for repo in repos_data]
 
         except requests.exceptions.RequestException as e:
-            console.print(f"[red]Error fetching repositories for {username}: {e}[/red]")
+            logger.error("Error fetching repositories for %s: %s", username, e)
+            # Re-raise authentication errors
+            if hasattr(e, "response") and e.response is not None:
+                if e.response.status_code == 401:
+                    raise ValueError("Invalid GitHub token or insufficient permissions")
             return []
 
     def get_org_repos(
@@ -125,10 +129,13 @@ class GitHubAPI:
             return [Repository(**repo) for repo in repos_data]
 
         except requests.exceptions.RequestException as e:
-            console.print(
-                f"[red]Error fetching repositories for organization "
-                f"{org_name}: {e}[/red]"
+            logger.error(
+                "Error fetching repositories for organization %s: %s", org_name, e
             )
+            # Re-raise authentication errors
+            if hasattr(e, "response") and e.response is not None:
+                if e.response.status_code == 401:
+                    raise ValueError("Invalid GitHub token or insufficient permissions")
             return []
 
     def get_all_repos(

@@ -1,5 +1,7 @@
 """Command-line interface for GitHub Repository Analyzer."""
 
+import logging
+import sys
 from typing import Optional
 
 import click
@@ -13,14 +15,36 @@ from .api import GitHubAPI
 # Load environment variables
 load_dotenv()
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    stream=sys.stderr,  # Log to stderr so it doesn't interfere with stdout
+)
+logger = logging.getLogger(__name__)
+
 console = Console()
 
 
 @click.group()
 @click.version_option()
-def main() -> None:
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
+@click.option("--quiet", "-q", is_flag=True, help="Suppress all logging output")
+@click.pass_context
+def main(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     """GitHub Repository Analyzer - Analyze GitHub repositories for users and organizations."""  # noqa: E501
-    pass
+    # Configure logging level based on options
+    if quiet:
+        logging.getLogger().setLevel(logging.ERROR)
+    elif verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+
+    # Store options in context for subcommands
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
 
 
 @main.command()
@@ -35,7 +59,9 @@ def main() -> None:
     help="Output format",
 )
 @click.option("--limit", "-l", type=int, help="Limit number of repositories to show")
+@click.pass_context
 def analyze(
+    ctx: click.Context,
     username_or_org: str,
     org: bool,
     token: Optional[str],
@@ -49,9 +75,10 @@ def analyze(
     try:
         api = GitHubAPI(token)
 
-        console.print(
-            f"[blue]Fetching repositories for "
-            f"{'organization' if org else 'user'}: {username_or_org}[/blue]"
+        logger.info(
+            "Fetching repositories for %s: %s",
+            "organization" if org else "user",
+            username_or_org,
         )
 
         stats = api.get_repo_stats(username_or_org, is_organization=org)
@@ -77,20 +104,25 @@ def analyze(
             "[yellow]Tip: Set GITHUB_TOKEN environment variable or use "
             "--token option[/yellow]"
         )
+        raise click.ClickException(str(e))
     except Exception as e:
         console.print(f"[red]Unexpected error: {e}[/red]")
+        raise click.ClickException(str(e))
 
 
 @main.command()
 @click.argument("username_or_org")
 @click.option("--org", is_flag=True, help="Treat the input as an organization name")
 @click.option("--token", "-t", help="GitHub personal access token")
-@click.option("--language", "-l", help="Filter by programming language")
+@click.option("--language", help="Filter by programming language")
 @click.option("--min-stars", type=int, help="Minimum number of stars")
 @click.option("--min-forks", type=int, help="Minimum number of forks")
 @click.option("--public-only", is_flag=True, help="Show only public repositories")
 @click.option("--private-only", is_flag=True, help="Show only private repositories")
+@click.option("--limit", type=int, help="Limit number of repositories to show")
+@click.pass_context
 def search(
+    ctx: click.Context,
     username_or_org: str,
     org: bool,
     token: Optional[str],
@@ -99,6 +131,7 @@ def search(
     min_forks: Optional[int],
     public_only: bool,
     private_only: bool,
+    limit: Optional[int],
 ) -> None:
     """Search and filter repositories for a GitHub user or organization.
 
@@ -107,9 +140,10 @@ def search(
     try:
         api = GitHubAPI(token)
 
-        console.print(
-            f"[blue]Searching repositories for "
-            f"{'organization' if org else 'user'}: {username_or_org}[/blue]"
+        logger.info(
+            "Searching repositories for %s: %s",
+            "organization" if org else "user",
+            username_or_org,
         )
 
         stats = api.get_repo_stats(username_or_org, is_organization=org)
@@ -144,9 +178,11 @@ def search(
         if private_only:
             filtered_repos = [r for r in filtered_repos if r.private]
 
-        console.print(
-            f"[green]Found {len(filtered_repos)} repositories matching criteria[/green]"
-        )
+        # Apply limit if specified
+        if limit:
+            filtered_repos = filtered_repos[:limit]
+
+        logger.info("Found %d repositories matching criteria", len(filtered_repos))
         _display_table(filtered_repos, username_or_org, org)
 
     except ValueError as e:
@@ -155,8 +191,10 @@ def search(
             "[yellow]Tip: Set GITHUB_TOKEN environment variable or use "
             "--token option[/yellow]"
         )
+        raise click.ClickException(str(e))
     except Exception as e:
         console.print(f"[red]Unexpected error: {e}[/red]")
+        raise click.ClickException(str(e))
 
 
 def _display_summary(stats: dict, username_or_org: str, is_org: bool) -> None:
@@ -229,10 +267,13 @@ def _display_json(repos: list) -> None:
     repos_data = []
     for repo in repos:
         repo_dict = repo.dict()
-        # Convert datetime strings to more readable format
         repos_data.append(repo_dict)
 
-    console.print(json.dumps(repos_data, indent=2))
+    # Output clean JSON with proper escaping
+    json_str = json.dumps(
+        repos_data, indent=2, ensure_ascii=False, separators=(",", ": ")
+    )
+    console.print(json_str)
 
 
 if __name__ == "__main__":
