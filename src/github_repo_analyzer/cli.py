@@ -10,10 +10,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .api import GitHubAPI
-
 # Import version information from package
-from . import __version__, __author__, __email__, __repository__, __license__
+from . import __author__, __email__, __license__, __repository__, __version__
+from .api import GitHubAPI
 
 # Load environment variables
 load_dotenv()
@@ -308,7 +307,9 @@ Email: [cyan]{__email__}[/cyan]
 Repository: [blue]{__repository__}[/blue]
 License: [green]{__license__}[/green]
 """
-    console.print(Panel(version_info.strip(), title="Version Information", border_style="blue"))
+    console.print(
+        Panel(version_info.strip(), title="Version Information", border_style="blue")
+    )
 
 
 def _display_json(repos: list) -> None:

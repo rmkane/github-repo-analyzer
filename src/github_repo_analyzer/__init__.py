@@ -2,13 +2,17 @@
 
 # Import version from package metadata
 try:
-    from importlib.metadata import version, metadata
+    from importlib.metadata import metadata, version
+
     __version__ = version("github-repo-analyzer")
     meta = metadata("github-repo-analyzer")
     __author__ = meta.get("Author") or "Ryan Kane"
     email_raw = meta.get("Author-email") or "rmkane@users.noreply.github.com"
     # Extract just the email if it's in "Name <email>" format
-    __email__ = email_raw.split("<")[-1].split(">")[0] if "<" in email_raw else email_raw
+    if "<" in email_raw:
+        __email__ = email_raw.split("<")[-1].split(">")[0]
+    else:
+        __email__ = email_raw
     __license__ = meta.get("License") or "MIT"
 except Exception:
     # Fallback for development/editable installs
