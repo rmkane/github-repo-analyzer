@@ -12,6 +12,12 @@ from rich.table import Table
 
 from .api import GitHubAPI
 
+# Version information
+__version__ = "0.1.0"
+__author__ = "Ryan Kane"
+__email__ = "rmkane@users.noreply.github.com"
+__repository__ = "https://github.com/rmkane/github-repo-analyzer"
+
 # Load environment variables
 load_dotenv()
 
@@ -27,7 +33,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version=__version__, prog_name="github-repo-analyzer")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress all logging output")
 @click.pass_context
@@ -292,6 +298,20 @@ def _display_table(repos: list, username_or_org: str, is_org: bool) -> None:
         )
 
     console.print(table)
+
+
+@main.command()
+def version() -> None:
+    """Show detailed version information."""
+    version_info = f"""
+[bold blue]GitHub Repository Analyzer[/bold blue]
+Version: [green]{__version__}[/green]
+Author: [yellow]{__author__}[/yellow]
+Email: [cyan]{__email__}[/cyan]
+Repository: [blue]{__repository__}[/blue]
+License: [green]MIT[/green]
+"""
+    console.print(Panel(version_info.strip(), title="Version Information", border_style="blue"))
 
 
 def _display_json(repos: list) -> None:

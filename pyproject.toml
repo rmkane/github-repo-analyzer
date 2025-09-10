@@ -10,13 +10,14 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Ryan Kane", email = "rmkane@users.noreply.github.com"},
 ]
-keywords = ["github", "cli", "repository", "analysis", "api"]
+keywords = ["github", "cli", "repository", "analysis", "api", "devtools", "python"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -24,7 +25,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
 ]
 
 dependencies = [
@@ -52,9 +55,11 @@ dev = [
 github-repo-analyzer = "github_repo_analyzer.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/github-repo-analyzer"
-Repository = "https://github.com/yourusername/github-repo-analyzer"
-Issues = "https://github.com/yourusername/github-repo-analyzer/issues"
+Homepage = "https://github.com/rmkane/github-repo-analyzer"
+Repository = "https://github.com/rmkane/github-repo-analyzer"
+Issues = "https://github.com/rmkane/github-repo-analyzer/issues"
+Documentation = "https://github.com/rmkane/github-repo-analyzer#readme"
+Changelog = "https://github.com/rmkane/github-repo-analyzer/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/github_repo_analyzer"]
