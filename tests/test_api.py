@@ -5,7 +5,8 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from github_repo_analyzer.api import GitHubAPI, Repository
+from github_repo_analyzer.api import GitHubAPI
+from github_repo_analyzer.models import Repository
 
 
 class TestGitHubAPI:
