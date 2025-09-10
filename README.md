@@ -36,6 +36,9 @@ A modern Python CLI tool for analyzing GitHub repositories for users and organiz
   - [Repository Model](#repository-model)
 - [Contributing](#contributing)
 - [License](#license)
+- [Automation Scripts](#automation-scripts)
+  - [Quick Analysis Script](#quick-analysis-script)
+  - [Full-Featured Analysis Script](#full-featured-analysis-script)
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
   - [Getting Help](#getting-help)
@@ -332,6 +335,38 @@ Pydantic model representing a GitHub repository with fields like:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Automation Scripts
+
+The `scripts/` directory contains automation scripts for easy CLI usage:
+
+### Quick Analysis Script
+
+```bash
+# Simple analysis with automatic setup
+./scripts/quick-analyze.sh rmkane
+./scripts/quick-analyze.sh rmkane 10  # Limit to 10 repos
+```
+
+### Full-Featured Analysis Script
+
+```bash
+# Comprehensive script with all options
+./scripts/analyze-user.sh rmkane --verbose
+./scripts/analyze-user.sh microsoft --org --limit 50
+./scripts/analyze-user.sh octocat --no-cache --cache-dir /tmp/cache
+```
+
+**Features:**
+
+- Automatic virtual environment setup
+- Project installation and activation
+- JSON output to `output/` directory
+- Comprehensive error handling
+- Colored output and logging
+- All CLI options supported
+
+See `scripts/README.md` for detailed documentation.
 
 ## Troubleshooting
 

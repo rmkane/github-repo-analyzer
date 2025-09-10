@@ -1,6 +1,7 @@
 # Project-specific files
 output/
 htmlcov/
+.cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

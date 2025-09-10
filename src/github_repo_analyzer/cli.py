@@ -59,6 +59,16 @@ def main(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     help="Output format",
 )
 @click.option("--limit", "-l", type=int, help="Limit number of repositories to show")
+@click.option(
+    "--cache-dir", default=".cache", help="Directory for cache files (default: .cache)"
+)
+@click.option(
+    "--cache-ttl",
+    type=int,
+    default=3600,
+    help="Cache time-to-live in seconds (default: 3600)",
+)
+@click.option("--no-cache", is_flag=True, help="Disable caching")
 @click.pass_context
 def analyze(
     ctx: click.Context,
@@ -67,13 +77,20 @@ def analyze(
     token: Optional[str],
     output: str,
     limit: Optional[int],
+    cache_dir: str,
+    cache_ttl: int,
+    no_cache: bool,
 ) -> None:
     """Analyze repositories for a GitHub user or organization.
 
     USERNAME_OR_ORG: GitHub username or organization name
     """
     try:
-        api = GitHubAPI(token)
+        # Configure cache settings
+        cache_dir_val: Optional[str] = None if no_cache else cache_dir
+        cache_ttl_val = 0 if no_cache else cache_ttl
+
+        api = GitHubAPI(token, cache_dir=cache_dir_val, cache_ttl=cache_ttl_val)
 
         logger.info(
             "Fetching repositories for %s: %s",
@@ -120,6 +137,16 @@ def analyze(
 @click.option("--public-only", is_flag=True, help="Show only public repositories")
 @click.option("--private-only", is_flag=True, help="Show only private repositories")
 @click.option("--limit", type=int, help="Limit number of repositories to show")
+@click.option(
+    "--cache-dir", default=".cache", help="Directory for cache files (default: .cache)"
+)
+@click.option(
+    "--cache-ttl",
+    type=int,
+    default=3600,
+    help="Cache time-to-live in seconds (default: 3600)",
+)
+@click.option("--no-cache", is_flag=True, help="Disable caching")
 @click.pass_context
 def search(
     ctx: click.Context,
@@ -132,13 +159,20 @@ def search(
     public_only: bool,
     private_only: bool,
     limit: Optional[int],
+    cache_dir: str,
+    cache_ttl: int,
+    no_cache: bool,
 ) -> None:
     """Search and filter repositories for a GitHub user or organization.
 
     USERNAME_OR_ORG: GitHub username or organization name
     """
     try:
-        api = GitHubAPI(token)
+        # Configure cache settings
+        cache_dir_val: Optional[str] = None if no_cache else cache_dir
+        cache_ttl_val = 0 if no_cache else cache_ttl
+
+        api = GitHubAPI(token, cache_dir=cache_dir_val, cache_ttl=cache_ttl_val)
 
         logger.info(
             "Searching repositories for %s: %s",
@@ -263,17 +297,27 @@ def _display_table(repos: list, username_or_org: str, is_org: bool) -> None:
 def _display_json(repos: list) -> None:
     """Display repositories in JSON format."""
     import json
+    import re
 
     repos_data = []
     for repo in repos:
         repo_dict = repo.dict()
+
+        # Clean control characters from string fields
+        for key, value in repo_dict.items():
+            if isinstance(value, str):
+                # Replace control characters with spaces
+                repo_dict[key] = re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", value)
+                # Collapse multiple spaces
+                repo_dict[key] = re.sub(r"\s+", " ", repo_dict[key]).strip()
+
         repos_data.append(repo_dict)
 
     # Output clean JSON with proper escaping
     json_str = json.dumps(
         repos_data, indent=2, ensure_ascii=False, separators=(",", ": ")
     )
-    console.print(json_str)
+    print(json_str)
 
 
 if __name__ == "__main__":

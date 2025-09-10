@@ -158,6 +158,7 @@ class TestCLIIntegration:
                 "octocat",
                 "--token",
                 "invalid_token",
+                "--no-cache",  # Disable caching to ensure we test the actual API call
             ],
             capture_output=True,
             text=True,

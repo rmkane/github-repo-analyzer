@@ -13,7 +13,7 @@ class TestGitHubAPI:
 
     def test_init_with_token(self):
         """Test initialization with token."""
-        api = GitHubAPI("test_token")
+        api = GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
         assert api.token == "test_token"
         assert "Authorization" in api.session.headers
         assert api.session.headers["Authorization"] == "token test_token"
@@ -62,7 +62,7 @@ class TestGitHubAPI:
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 
-        api = GitHubAPI("test_token")
+        api = GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
         repos = api.get_user_repos("testuser")
 
         assert len(repos) == 1
@@ -75,7 +75,7 @@ class TestGitHubAPI:
         """Test user repos retrieval with error."""
         mock_get.side_effect = requests.exceptions.RequestException("API Error")
 
-        api = GitHubAPI("test_token")
+        api = GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
         repos = api.get_user_repos("testuser")
 
         assert repos == []
@@ -112,7 +112,7 @@ class TestGitHubAPI:
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 
-        api = GitHubAPI("test_token")
+        api = GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
         repos = api.get_org_repos("testorg")
 
         assert len(repos) == 1
