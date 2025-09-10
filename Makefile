@@ -40,7 +40,7 @@ test-integration: ## Run integration tests (requires GITHUB_TOKEN)
 	venv/bin/pytest tests/test_cli.py
 
 lint: ## Run linting checks
-	venv/bin/flake8 --max-line-length=88 src/github_repo_analyzer tests
+	venv/bin/flake8 src/github_repo_analyzer tests
 	venv/bin/mypy src/github_repo_analyzer
 
 format: ## Format code with isort and black
