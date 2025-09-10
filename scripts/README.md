@@ -57,6 +57,7 @@ A lightweight script for quick repository analysis.
 - Basic error handling
 
 **Usage:**
+
 ```bash
 # Basic usage
 ./scripts/quick-analyze.sh rmkane
@@ -82,11 +83,11 @@ A lightweight script for quick repository analysis.
 
 ## Environment Variables
 
-### Required
+### Required Environment Variables
 
 - `GITHUB_TOKEN`: GitHub personal access token
 
-### Optional
+### Optional Environment Variables
 
 - `GITHUB_CACHE_DIR`: Default cache directory (overridden by `--cache-dir`)
 - `GITHUB_CACHE_TTL`: Default cache TTL in seconds (overridden by `--cache-ttl`)
