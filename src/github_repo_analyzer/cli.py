@@ -12,11 +12,8 @@ from rich.table import Table
 
 from .api import GitHubAPI
 
-# Version information
-__version__ = "0.1.0"
-__author__ = "Ryan Kane"
-__email__ = "rmkane@users.noreply.github.com"
-__repository__ = "https://github.com/rmkane/github-repo-analyzer"
+# Import version information from package
+from . import __version__, __author__, __email__, __repository__, __license__
 
 # Load environment variables
 load_dotenv()
@@ -309,7 +306,7 @@ Version: [green]{__version__}[/green]
 Author: [yellow]{__author__}[/yellow]
 Email: [cyan]{__email__}[/cyan]
 Repository: [blue]{__repository__}[/blue]
-License: [green]MIT[/green]
+License: [green]{__license__}[/green]
 """
     console.print(Panel(version_info.strip(), title="Version Information", border_style="blue"))
 
