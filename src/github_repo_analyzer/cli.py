@@ -100,7 +100,11 @@ def analyze(
             username_or_org,
         )
 
-        stats = api.get_repo_stats(username_or_org, is_organization=org)
+        # Use limit if provided, otherwise default to 100
+        limit_val = limit if limit is not None else 100
+        stats = api.get_repo_stats(
+            username_or_org, is_organization=org, limit=limit_val
+        )
 
         if not stats:
             console.print("[red]No repositories found or error occurred.[/red]")
@@ -182,7 +186,11 @@ def search(
             username_or_org,
         )
 
-        stats = api.get_repo_stats(username_or_org, is_organization=org)
+        # Use limit if provided, otherwise default to 100
+        limit_val = limit if limit is not None else 100
+        stats = api.get_repo_stats(
+            username_or_org, is_organization=org, limit=limit_val
+        )
 
         if not stats:
             console.print("[red]No repositories found or error occurred.[/red]")
@@ -290,7 +298,7 @@ def _display_table(repos: list, username_or_org: str, is_org: bool) -> None:
             f"{repo.size / 1024:.1f}",
             "✓" if repo.private else "✗",
             "✓" if repo.archived else "✗",
-            repo.updated_at[:10],  # Just the date part
+            repo.updated_at[:10] if repo.updated_at else "N/A",
         )
 
     console.print(table)
@@ -319,7 +327,7 @@ def _display_json(repos: list) -> None:
 
     repos_data = []
     for repo in repos:
-        repo_dict = repo.dict()
+        repo_dict = repo.to_dict()
 
         # Clean control characters from string fields
         for key, value in repo_dict.items():

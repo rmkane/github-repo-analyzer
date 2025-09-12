@@ -2,21 +2,62 @@
 
 import logging
 import os
-from typing import Dict, List, Optional, Union
-from urllib.parse import urljoin
+from typing import Any, Dict, List, Optional
 
-import requests
+from github import Auth, Github
+from github.GithubException import GithubException
 
-from .models import CacheManager, Repository
-from .utils import clean_repository_data
+from .models import Owner, Repository
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubAPI:
-    """GitHub API client."""
+def _pygithub_to_dict(repo: Any) -> Dict[str, Any]:
+    """Convert PyGithub Repository object to dictionary for Pydantic."""
+    # Get all simple attributes that don't need custom mapping
+    simple_fields = [
+        "name",
+        "full_name",
+        "description",
+        "html_url",
+        "clone_url",
+        "ssh_url",
+        "language",
+        "stargazers_count",
+        "forks_count",
+        "open_issues_count",
+        "size",
+        "private",
+        "archived",
+        "disabled",
+    ]
 
-    BASE_URL = "https://api.github.com"
+    # Map simple fields automatically using **kwargs approach
+    data = {field: getattr(repo, field) for field in simple_fields}
+
+    # Only handle fields that need custom processing
+    data.update(
+        {
+            "created_at": repo.created_at.isoformat() if repo.created_at else "",
+            "updated_at": repo.updated_at.isoformat() if repo.updated_at else "",
+            "pushed_at": repo.pushed_at.isoformat() if repo.pushed_at else None,
+            "topics": [],  # Skip topics to avoid extra API calls
+            "license": None,  # Skip license to avoid extra API calls
+            "owner": Owner(
+                login=repo.owner.login,
+                id=repo.owner.id,
+                type=repo.owner.type,
+                html_url=repo.owner.html_url,
+                avatar_url=repo.owner.avatar_url,
+            ),
+        }
+    )
+
+    return data
+
+
+class GitHubAPI:
+    """GitHub API client using PyGithub."""
 
     def __init__(
         self,
@@ -29,8 +70,9 @@ class GitHubAPI:
         Args:
             token: GitHub personal access token. If not provided, will try to get
                 from GITHUB_TOKEN env var.
-            cache_dir: Directory to store cache files (default: ".cache")
-            cache_ttl: Cache time-to-live in seconds (default: 3600 = 1 hour)
+            cache_dir: Directory to store cache files (PyGithub handles caching
+                internally)
+            cache_ttl: Cache time-to-live in seconds (PyGithub handles this internally)
         """
         self.token = token or os.getenv("GITHUB_TOKEN")
         if not self.token:
@@ -39,17 +81,8 @@ class GitHubAPI:
                 "token parameter."
             )
 
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Authorization": f"token {self.token}",
-                "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "github-repo-analyzer/0.1.0",
-            }
-        )
-
-        # Initialize cache
-        self.cache = CacheManager(cache_dir, cache_ttl)
+        # PyGithub handles authentication, caching, and rate limiting automatically
+        self.github = Github(auth=Auth.Token(self.token))
 
     def get_user_repos(
         self, username: str, per_page: int = 100, page: int = 1
@@ -64,42 +97,25 @@ class GitHubAPI:
         Returns:
             List of Repository objects
         """
-        url = urljoin(self.BASE_URL, f"/users/{username}/repos")
-        params: Dict[str, Union[str, int]] = {
-            "per_page": min(per_page, 100),
-            "page": page,
-            "sort": "updated",
-            "direction": "desc",
-        }
-
-        # Check cache first
-        cached_data = self.cache.get(url, params)
-        if cached_data is not None:
-            logger.debug("Using cached data for user %s page %d", username, page)
-            # Clean cached data as well (in case it was cached before cleaning)
-            cleaned_cached_data = clean_repository_data(cached_data)
-            return [Repository(**repo) for repo in cleaned_cached_data]
-
         try:
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
+            user = self.github.get_user(username)
+            # PyGithub handles pagination differently - we get all repos and slice
+            all_repos = user.get_repos(sort="updated", direction="desc")
+            repos_list = list(all_repos)
 
-            repos_data = response.json()
+            # Manual pagination since PyGithub doesn't support per_page/page directly
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            page_repos = repos_list[start_idx:end_idx]
 
-            # Clean control characters from the data
-            cleaned_repos_data = clean_repository_data(repos_data)
-
-            # Cache the cleaned response
-            self.cache.set(url, params, cleaned_repos_data)
-
-            return [Repository(**repo) for repo in cleaned_repos_data]
-
-        except requests.exceptions.RequestException as e:
+            return [
+                Repository.model_validate(_pygithub_to_dict(repo))
+                for repo in page_repos
+            ]
+        except GithubException as e:
             logger.error("Error fetching repositories for %s: %s", username, e)
-            # Re-raise authentication errors
-            if hasattr(e, "response") and e.response is not None:
-                if e.response.status_code == 401:
-                    raise ValueError("Invalid GitHub token or insufficient permissions")
+            if e.status == 401:
+                raise ValueError("Invalid GitHub token or insufficient permissions")
             return []
 
     def get_org_repos(
@@ -115,94 +131,79 @@ class GitHubAPI:
         Returns:
             List of Repository objects
         """
-        url = urljoin(self.BASE_URL, f"/orgs/{org_name}/repos")
-        params: Dict[str, Union[str, int]] = {
-            "per_page": min(per_page, 100),
-            "page": page,
-            "sort": "updated",
-            "direction": "desc",
-        }
-
-        # Check cache first
-        cached_data = self.cache.get(url, params)
-        if cached_data is not None:
-            logger.debug("Using cached data for org %s page %d", org_name, page)
-            # Clean cached data as well (in case it was cached before cleaning)
-            cleaned_cached_data = clean_repository_data(cached_data)
-            return [Repository(**repo) for repo in cleaned_cached_data]
-
         try:
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
+            org = self.github.get_organization(org_name)
+            # PyGithub handles pagination differently - we get all repos and slice
+            all_repos = org.get_repos(sort="updated", direction="desc")
+            repos_list = list(all_repos)
 
-            repos_data = response.json()
+            # Manual pagination since PyGithub doesn't support per_page/page directly
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            page_repos = repos_list[start_idx:end_idx]
 
-            # Clean control characters from the data
-            cleaned_repos_data = clean_repository_data(repos_data)
-
-            # Cache the cleaned response
-            self.cache.set(url, params, cleaned_repos_data)
-
-            return [Repository(**repo) for repo in cleaned_repos_data]
-
-        except requests.exceptions.RequestException as e:
+            return [
+                Repository.model_validate(_pygithub_to_dict(repo))
+                for repo in page_repos
+            ]
+        except GithubException as e:
             logger.error(
                 "Error fetching repositories for organization %s: %s", org_name, e
             )
-            # Re-raise authentication errors
-            if hasattr(e, "response") and e.response is not None:
-                if e.response.status_code == 401:
-                    raise ValueError("Invalid GitHub token or insufficient permissions")
+            if e.status == 401:
+                raise ValueError("Invalid GitHub token or insufficient permissions")
             return []
 
     def get_all_repos(
-        self, username_or_org: str, is_organization: bool = False
+        self, username_or_org: str, is_organization: bool = False, limit: int = 100
     ) -> List[Repository]:
-        """Get all repositories for a user or organization (handles pagination).
+        """Get repositories for a user or organization with pagination.
 
         Args:
             username_or_org: GitHub username or organization name
             is_organization: Whether the target is an organization
+            limit: Maximum number of repositories to fetch (default: 100)
 
         Returns:
-            List of all Repository objects
+            List of Repository objects (up to limit)
         """
-        all_repos = []
-        page = 1
-        per_page = 100
-
-        while True:
+        try:
             if is_organization:
-                repos = self.get_org_repos(username_or_org, per_page, page)
+                org = self.github.get_organization(username_or_org)
+                repos = org.get_repos(sort="updated", direction="desc")
             else:
-                repos = self.get_user_repos(username_or_org, per_page, page)
+                user = self.github.get_user(username_or_org)
+                repos = user.get_repos(sort="updated", direction="desc")
 
-            if not repos:
-                break
+            # Fetch repositories with limit to prevent hanging
+            repo_list = []
+            for i, repo in enumerate(repos):
+                if i >= limit:
+                    break
+                repo_list.append(Repository.model_validate(_pygithub_to_dict(repo)))
 
-            all_repos.extend(repos)
-
-            # If we got fewer repos than requested, we've reached the end
-            if len(repos) < per_page:
-                break
-
-            page += 1
-
-        return all_repos
+            logger.info(f"Fetched {len(repo_list)} repositories for {username_or_org}")
+            return repo_list
+        except GithubException as e:
+            logger.error("Error fetching repositories for %s: %s", username_or_org, e)
+            if e.status == 401:
+                raise ValueError("Invalid GitHub token or insufficient permissions")
+            return []
 
     def get_repo_stats(
-        self, username_or_org: str, is_organization: bool = False
+        self, username_or_org: str, is_organization: bool = False, limit: int = 100
     ) -> Dict:
         """Get repository statistics for a user or organization.
 
         Args:
             username_or_org: GitHub username or organization name
             is_organization: Whether the target is an organization
+            limit: Maximum number of repositories to fetch (default: 100)
 
         Returns:
             Dictionary with repository statistics
         """
-        repos = self.get_all_repos(username_or_org, is_organization)
+        repos = self.get_all_repos(username_or_org, is_organization, limit)
 
         if not repos:
             return {}
