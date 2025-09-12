@@ -20,6 +20,12 @@ from github_repo_analyzer.core import GitHubAPI, RepositoryService
 from github_repo_analyzer.formatters import display_json, display_summary, display_table
 from github_repo_analyzer.logging_config import get_logger, setup_logging
 from github_repo_analyzer.utils import clamp_limit
+from github_repo_analyzer.validation import (
+    validate_config_inputs,
+    validate_analyze_inputs,
+    validate_search_inputs,
+    ValidationError,
+)
 
 # Load environment variables
 load_dotenv()
@@ -130,12 +136,27 @@ def analyze(
         no_cache: Whether to disable caching
     """
     try:
-        # Create configuration
-        config = create_config(
+        # Validate configuration inputs
+        config_inputs = validate_config_inputs(
             token=token,
             cache_dir=cache_dir,
             cache_ttl=cache_ttl,
+        )
+
+        # Create configuration
+        config = create_config(
+            token=config_inputs.get("token"),
+            cache_dir=config_inputs["cache_dir"],
+            cache_ttl=config_inputs["cache_ttl"],
             no_cache=no_cache,
+        )
+
+        # Validate analyze inputs
+        analyze_inputs = validate_analyze_inputs(
+            username_or_org=username_or_org,
+            limit=limit,
+            sort_field=sort,
+            output_format=output,
         )
 
         # Initialize API and service
@@ -147,23 +168,25 @@ def analyze(
         )
         service = RepositoryService(api)
 
-        # Validate inputs
-        service.validate_inputs(username_or_org, limit)
-
         logger.info(
             "Fetching repositories for %s: %s",
             "organization" if org else "user",
-            username_or_org,
+            analyze_inputs["username_or_org"],
         )
 
         # Clamp limit to valid range using config
         limit_val = clamp_limit(
-            limit, config.limits.default_limit, config.limits.max_limit
+            analyze_inputs["limit"],
+            config.limits.default_limit,
+            config.limits.max_limit,
         )
 
         # Analyze repositories using service
         stats = service.analyze_repositories(
-            username_or_org, is_organization=org, limit=limit_val, sort_field=sort
+            analyze_inputs["username_or_org"],
+            is_organization=org,
+            limit=limit_val,
+            sort_field=analyze_inputs["sort_field"],
         )
 
         if not stats:
@@ -172,17 +195,17 @@ def analyze(
 
         repos = stats["repositories"]
 
-        if limit:
-            repos = repos[:limit]
+        if analyze_inputs["limit"]:
+            repos = repos[: analyze_inputs["limit"]]
 
-        if output == "summary":
-            display_summary(stats, username_or_org, org)
-        elif output == "json":
+        if analyze_inputs["output_format"] == "summary":
+            display_summary(stats, analyze_inputs["username_or_org"], org)
+        elif analyze_inputs["output_format"] == "json":
             display_json(repos)
         else:
-            display_table(repos, username_or_org, org)
+            display_table(repos, analyze_inputs["username_or_org"], org)
 
-    except ValueError as e:
+    except (ValueError, ValidationError) as e:
         error_msg = str(e)
         if "token" in error_msg.lower():
             console.print(f"[red]Authentication Error: {error_msg}[/red]")
@@ -283,12 +306,31 @@ def search(
         no_cache: Whether to disable caching
     """
     try:
-        # Create configuration
-        config = create_config(
+        # Validate configuration inputs
+        config_inputs = validate_config_inputs(
             token=token,
             cache_dir=cache_dir,
             cache_ttl=cache_ttl,
+        )
+
+        # Create configuration
+        config = create_config(
+            token=config_inputs.get("token"),
+            cache_dir=config_inputs["cache_dir"],
+            cache_ttl=config_inputs["cache_ttl"],
             no_cache=no_cache,
+        )
+
+        # Validate search inputs
+        search_inputs = validate_search_inputs(
+            username_or_org=username_or_org,
+            limit=limit,
+            sort_field=sort,
+            language=language,
+            min_stars=min_stars,
+            min_forks=min_forks,
+            public_only=public_only,
+            private_only=private_only,
         )
 
         # Initialize API and service
@@ -300,31 +342,28 @@ def search(
         )
         service = RepositoryService(api)
 
-        # Validate inputs
-        service.validate_inputs(username_or_org, limit, public_only, private_only)
-
         logger.info(
             "Searching repositories for %s: %s",
             "organization" if org else "user",
-            username_or_org,
+            search_inputs["username_or_org"],
         )
 
         # Clamp limit to valid range using config
         limit_val = clamp_limit(
-            limit, config.limits.default_limit, config.limits.max_limit
+            search_inputs["limit"], config.limits.default_limit, config.limits.max_limit
         )
 
         # Search repositories using service
         filtered_repos = service.search_repositories(
-            username_or_org,
+            search_inputs["username_or_org"],
             is_organization=org,
-            language=language,
-            min_stars=min_stars,
-            min_forks=min_forks,
-            public_only=public_only,
-            private_only=private_only,
+            language=search_inputs["language"],
+            min_stars=search_inputs["min_stars"],
+            min_forks=search_inputs["min_forks"],
+            public_only=search_inputs["public_only"],
+            private_only=search_inputs["private_only"],
             limit=limit_val,
-            sort_field=sort,
+            sort_field=search_inputs["sort_field"],
         )
 
         if not filtered_repos:
@@ -332,9 +371,9 @@ def search(
             return
 
         logger.info("Found %d repositories matching criteria", len(filtered_repos))
-        display_table(filtered_repos, username_or_org, org)
+        display_table(filtered_repos, search_inputs["username_or_org"], org)
 
-    except ValueError as e:
+    except (ValueError, ValidationError) as e:
         error_msg = str(e)
         if "token" in error_msg.lower():
             console.print(f"[red]Authentication Error: {error_msg}[/red]")

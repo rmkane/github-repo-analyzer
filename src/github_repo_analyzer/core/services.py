@@ -9,6 +9,10 @@ from github_repo_analyzer.logging_config import (
     log_function_call,
     log_performance,
 )
+from github_repo_analyzer.validation import (
+    validate_analyze_inputs,
+    ValidationError,
+)
 
 logger = get_logger(__name__)
 
@@ -161,7 +165,7 @@ class RepositoryService:
         public_only: bool = False,
         private_only: bool = False,
     ) -> None:
-        """Validate input parameters.
+        """Validate input parameters using centralized validation.
 
         Args:
             username_or_org: Username or organization name
@@ -170,16 +174,17 @@ class RepositoryService:
             private_only: Private only flag
 
         Raises:
-            ValueError: If validation fails
+            ValidationError: If validation fails
         """
-        if not username_or_org or not username_or_org.strip():
-            raise ValueError("Username or organization name cannot be empty")
+        # Use centralized validation for basic inputs
+        validate_analyze_inputs(username_or_org, limit)
 
-        if limit is not None and limit < -1:
-            raise ValueError("Limit must be -1 (unlimited) or non-negative")
-
+        # Additional validation for visibility flags
         if public_only and private_only:
-            raise ValueError("Cannot specify both --public-only and --private-only")
+            raise ValidationError(
+                "Cannot specify both --public-only and --private-only",
+                "visibility_flags",
+            )
 
     def search_repositories(
         self,
