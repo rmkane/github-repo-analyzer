@@ -7,7 +7,7 @@ ensuring consistent validation logic across the application.
 import re
 from typing import Optional, Dict, Any
 
-from github_repo_analyzer.logging_config import get_logger
+from github_repo_analyzer.loggers import get_logger
 
 logger = get_logger(__name__)
 

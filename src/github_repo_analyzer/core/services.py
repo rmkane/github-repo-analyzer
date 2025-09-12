@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from github_repo_analyzer.core.api import GitHubAPI
 from github_repo_analyzer.core.models import Repository
-from github_repo_analyzer.logging_config import (
+from github_repo_analyzer.loggers import (
     get_logger,
     log_function_call,
     log_performance,

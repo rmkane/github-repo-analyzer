@@ -9,7 +9,7 @@ from github import Auth, Github
 from github.GithubException import GithubException
 
 from github_repo_analyzer.core.models import Repository
-from github_repo_analyzer.logging_config import (
+from github_repo_analyzer.loggers import (
     get_logger,
     log_error_with_context,
     log_performance,

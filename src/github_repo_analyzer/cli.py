@@ -18,7 +18,7 @@ from github_repo_analyzer import (
 from github_repo_analyzer.config import create_config, get_config
 from github_repo_analyzer.core import GitHubAPI, RepositoryService
 from github_repo_analyzer.formatters import display_json, display_summary, display_table
-from github_repo_analyzer.logging_config import get_logger, setup_logging
+from github_repo_analyzer.loggers import get_logger, setup_logging
 from github_repo_analyzer.utils import clamp_limit
 from github_repo_analyzer.validation import (
     validate_config_inputs,
