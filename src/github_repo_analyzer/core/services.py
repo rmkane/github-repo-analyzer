@@ -10,8 +10,8 @@ from github_repo_analyzer.loggers import (
     log_performance,
 )
 from github_repo_analyzer.validation import (
-    validate_analyze_inputs,
     ValidationError,
+    validate_analyze_inputs,
 )
 
 logger = get_logger(__name__)

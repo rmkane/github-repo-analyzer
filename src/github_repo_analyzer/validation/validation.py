@@ -5,7 +5,7 @@ ensuring consistent validation logic across the application.
 """
 
 import re
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from github_repo_analyzer.loggers import get_logger
 

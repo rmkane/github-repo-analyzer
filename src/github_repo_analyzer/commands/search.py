@@ -11,9 +11,9 @@ from github_repo_analyzer.formatters import display_table
 from github_repo_analyzer.loggers import get_logger
 from github_repo_analyzer.utils import clamp_limit
 from github_repo_analyzer.validation import (
+    ValidationError,
     validate_config_inputs,
     validate_search_inputs,
-    ValidationError,
 )
 
 logger = get_logger(__name__)
