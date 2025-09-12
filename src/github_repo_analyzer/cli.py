@@ -19,6 +19,7 @@ from github_repo_analyzer import (
 )
 from github_repo_analyzer.core import GitHubAPI, RepositoryService
 from github_repo_analyzer.formatters import display_json, display_summary, display_table
+from github_repo_analyzer.utils import clamp_limit
 
 # Load environment variables
 load_dotenv()
@@ -134,14 +135,8 @@ def analyze(
             username_or_org,
         )
 
-        # Use limit if provided, otherwise use API default (100)
-        # Use -1 to mean unlimited (all repositories), 0 means actually 0
-        if limit is None:
-            limit_val = 100  # Default to GitHub API max per page
-        elif limit == -1:
-            limit_val = 10000  # Unlimited - set very high limit
-        else:
-            limit_val = limit
+        # Clamp limit to valid range
+        limit_val = clamp_limit(limit)
 
         # Analyze repositories using service
         stats = service.analyze_repositories(
@@ -282,14 +277,8 @@ def search(
             username_or_org,
         )
 
-        # Use limit if provided, otherwise use API default (100)
-        # Use -1 to mean unlimited (all repositories), 0 means actually 0
-        if limit is None:
-            limit_val = 100  # Default to GitHub API max per page
-        elif limit == -1:
-            limit_val = 10000  # Unlimited - set very high limit
-        else:
-            limit_val = limit
+        # Clamp limit to valid range
+        limit_val = clamp_limit(limit)
 
         # Search repositories using service
         filtered_repos = service.search_repositories(
@@ -307,10 +296,6 @@ def search(
         if not filtered_repos:
             console.print("[red]No repositories found or error occurred.[/red]")
             return
-
-        # Apply limit if specified
-        if limit:
-            filtered_repos = filtered_repos[:limit]
 
         logger.info("Found %d repositories matching criteria", len(filtered_repos))
         display_table(filtered_repos, username_or_org, org)

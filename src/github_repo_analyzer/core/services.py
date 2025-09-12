@@ -54,54 +54,6 @@ class RepositoryService:
         stats["repositories"] = sorted_repos
         return stats
 
-    def search_repositories(
-        self,
-        username_or_org: str,
-        is_organization: bool = False,
-        language: Optional[str] = None,
-        min_stars: Optional[int] = None,
-        min_forks: Optional[int] = None,
-        public_only: bool = False,
-        private_only: bool = False,
-        limit: int = 100,
-        sort_field: str = "updated",
-    ) -> List[Repository]:
-        """Search and filter repositories.
-
-        Args:
-            username_or_org: GitHub username or organization name
-            is_organization: Whether the target is an organization
-            language: Filter by programming language
-            min_stars: Minimum number of stars
-            min_forks: Minimum number of forks
-            public_only: Show only public repositories
-            private_only: Show only private repositories
-            limit: Maximum number of repositories to fetch
-            sort_field: Field to sort repositories by
-
-        Returns:
-            List of filtered and sorted repositories
-        """
-        # Get all repositories
-        stats = self.api.get_repo_stats(
-            username_or_org, is_organization=is_organization, limit=limit
-        )
-
-        if not stats:
-            return []
-
-        repos = stats["repositories"]
-
-        # Apply filters
-        filtered_repos = self._apply_filters(
-            repos, language, min_stars, min_forks, public_only, private_only
-        )
-
-        # Sort repositories
-        sorted_repos = self._sort_repositories(filtered_repos, sort_field)
-
-        return sorted_repos
-
     def _apply_filters(
         self,
         repos: List[Repository],
@@ -205,3 +157,66 @@ class RepositoryService:
 
         if public_only and private_only:
             raise ValueError("Cannot specify both --public-only and --private-only")
+
+    def search_repositories(
+        self,
+        username_or_org: str,
+        is_organization: bool = False,
+        limit: int = 100,
+        sort_field: str = "updated",
+        language: Optional[str] = None,
+        min_stars: Optional[int] = None,
+        min_forks: Optional[int] = None,
+        public_only: bool = False,
+        private_only: bool = False,
+    ) -> List[Repository]:
+        """Search and filter repositories for a user or organization.
+
+        Args:
+            username_or_org: GitHub username or organization name
+            is_organization: Whether the target is an organization
+            limit: Maximum number of repositories to return
+            sort_field: Field to sort by (name, stars, forks, updated, created, size)
+            language: Filter by programming language
+            min_stars: Minimum number of stars
+            min_forks: Minimum number of forks
+            public_only: Show only public repositories
+            private_only: Show only private repositories
+
+        Returns:
+            List of filtered and sorted Repository objects
+
+        Raises:
+            ValueError: If input validation fails
+        """
+        # Validate inputs
+        self.validate_inputs(
+            username_or_org,
+            limit,
+            public_only,
+            private_only,
+        )
+
+        # Get all repositories
+        stats = self.analyze_repositories(
+            username_or_org=username_or_org,
+            is_organization=is_organization,
+            limit=limit,
+            sort_field=sort_field,
+        )
+
+        repos = stats["repositories"]
+
+        # Apply filters
+        filtered_repos = self._apply_filters(
+            repos, language, min_stars, min_forks, public_only, private_only
+        )
+
+        # Sort repositories
+        sorted_repos = self._sort_repositories(filtered_repos, sort_field)
+
+        # Apply limit if specified
+        if limit:
+            sorted_repos = sorted_repos[:limit]
+
+        return sorted_repos
