@@ -17,6 +17,7 @@ from github_repo_analyzer import (
     __repository__,
     __version__,
 )
+from github_repo_analyzer.config import create_config, get_config
 from github_repo_analyzer.core import GitHubAPI, RepositoryService
 from github_repo_analyzer.formatters import display_json, display_summary, display_table
 from github_repo_analyzer.utils import clamp_limit
@@ -118,12 +119,21 @@ def analyze(
         no_cache: Whether to disable caching
     """
     try:
-        # Configure cache settings
-        cache_dir_val: Optional[str] = None if no_cache else cache_dir
-        cache_ttl_val = 0 if no_cache else cache_ttl
+        # Create configuration
+        config = create_config(
+            token=token,
+            cache_dir=cache_dir,
+            cache_ttl=cache_ttl,
+            no_cache=no_cache,
+        )
 
         # Initialize API and service
-        api = GitHubAPI(token, cache_dir=cache_dir_val, cache_ttl=cache_ttl_val)
+        api = GitHubAPI(
+            token=config.github_token,
+            cache_dir=config.cache.directory if config.cache.enabled else None,
+            cache_ttl=config.cache.ttl_seconds,
+            timeout=config.api.timeout_seconds,
+        )
         service = RepositoryService(api)
 
         # Validate inputs
@@ -135,8 +145,10 @@ def analyze(
             username_or_org,
         )
 
-        # Clamp limit to valid range
-        limit_val = clamp_limit(limit)
+        # Clamp limit to valid range using config
+        limit_val = clamp_limit(
+            limit, config.limits.default_limit, config.limits.max_limit
+        )
 
         # Analyze repositories using service
         stats = service.analyze_repositories(
@@ -260,12 +272,21 @@ def search(
         no_cache: Whether to disable caching
     """
     try:
-        # Configure cache settings
-        cache_dir_val: Optional[str] = None if no_cache else cache_dir
-        cache_ttl_val = 0 if no_cache else cache_ttl
+        # Create configuration
+        config = create_config(
+            token=token,
+            cache_dir=cache_dir,
+            cache_ttl=cache_ttl,
+            no_cache=no_cache,
+        )
 
         # Initialize API and service
-        api = GitHubAPI(token, cache_dir=cache_dir_val, cache_ttl=cache_ttl_val)
+        api = GitHubAPI(
+            token=config.github_token,
+            cache_dir=config.cache.directory if config.cache.enabled else None,
+            cache_ttl=config.cache.ttl_seconds,
+            timeout=config.api.timeout_seconds,
+        )
         service = RepositoryService(api)
 
         # Validate inputs
@@ -277,8 +298,10 @@ def search(
             username_or_org,
         )
 
-        # Clamp limit to valid range
-        limit_val = clamp_limit(limit)
+        # Clamp limit to valid range using config
+        limit_val = clamp_limit(
+            limit, config.limits.default_limit, config.limits.max_limit
+        )
 
         # Search repositories using service
         filtered_repos = service.search_repositories(
