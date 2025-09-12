@@ -8,11 +8,12 @@ import click
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 
 # Import version information from package
 from . import __author__, __email__, __license__, __repository__, __version__
 from .api import GitHubAPI
+from .formatters import display_json, display_summary, display_table
+from .services import RepositoryService
 
 # Load environment variables
 load_dotenv()
@@ -67,6 +68,13 @@ def main(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     help="Limit number of repositories to show (default: 100, use -1 for all)",
 )
 @click.option(
+    "--sort",
+    "-s",
+    type=click.Choice(["name", "stars", "forks", "updated", "created", "size"]),
+    default="updated",
+    help="Sort repositories by field (default: updated)",
+)
+@click.option(
     "--cache-dir", default=".cache", help="Directory for cache files (default: .cache)"
 )
 @click.option(
@@ -84,6 +92,7 @@ def analyze(
     token: Optional[str],
     output: str,
     limit: Optional[int],
+    sort: str,
     cache_dir: str,
     cache_ttl: int,
     no_cache: bool,
@@ -97,25 +106,22 @@ def analyze(
         token: GitHub personal access token
         output: Output format (table, json, summary)
         limit: Maximum number of repositories to fetch
+        sort: Sort repositories by field (name, stars, forks, updated, created, size)
         cache_dir: Cache directory
         cache_ttl: Cache time-to-live in seconds
         no_cache: Whether to disable caching
     """
-    # Input validation
-    if not username_or_org or not username_or_org.strip():
-        console.print("[red]Error: Username or organization name cannot be empty[/red]")
-        raise click.ClickException("Username or organization name is required")
-
-    if limit is not None and limit < -1:
-        console.print("[red]Error: Limit must be -1 (unlimited) or non-negative[/red]")
-        raise click.ClickException("Invalid limit value")
-
     try:
         # Configure cache settings
         cache_dir_val: Optional[str] = None if no_cache else cache_dir
         cache_ttl_val = 0 if no_cache else cache_ttl
 
+        # Initialize API and service
         api = GitHubAPI(token, cache_dir=cache_dir_val, cache_ttl=cache_ttl_val)
+        service = RepositoryService(api)
+
+        # Validate inputs
+        service.validate_inputs(username_or_org, limit)
 
         logger.info(
             "Fetching repositories for %s: %s",
@@ -131,8 +137,10 @@ def analyze(
             limit_val = 10000  # Unlimited - set very high limit
         else:
             limit_val = limit
-        stats = api.get_repo_stats(
-            username_or_org, is_organization=org, limit=limit_val
+
+        # Analyze repositories using service
+        stats = service.analyze_repositories(
+            username_or_org, is_organization=org, limit=limit_val, sort_field=sort
         )
 
         if not stats:
@@ -140,15 +148,16 @@ def analyze(
             return
 
         repos = stats["repositories"]
+
         if limit:
             repos = repos[:limit]
 
         if output == "summary":
-            _display_summary(stats, username_or_org, org)
+            display_summary(stats, username_or_org, org)
         elif output == "json":
-            _display_json(repos)
+            display_json(repos)
         else:
-            _display_table(repos, username_or_org, org)
+            display_table(repos, username_or_org, org)
 
     except ValueError as e:
         error_msg = str(e)
@@ -199,6 +208,13 @@ def analyze(
     help="Limit number of repositories to show (default: 100, use -1 for all)",
 )
 @click.option(
+    "--sort",
+    "-s",
+    type=click.Choice(["name", "stars", "forks", "updated", "created", "size"]),
+    default="updated",
+    help="Sort repositories by field (default: updated)",
+)
+@click.option(
     "--cache-dir", default=".cache", help="Directory for cache files (default: .cache)"
 )
 @click.option(
@@ -220,6 +236,7 @@ def search(
     public_only: bool,
     private_only: bool,
     limit: Optional[int],
+    sort: str,
     cache_dir: str,
     cache_ttl: int,
     no_cache: bool,
@@ -237,31 +254,22 @@ def search(
         public_only: Show only public repositories
         private_only: Show only private repositories
         limit: Maximum number of repositories to fetch
+        sort: Sort repositories by field (name, stars, forks, updated, created, size)
         cache_dir: Cache directory
         cache_ttl: Cache time-to-live in seconds
         no_cache: Whether to disable caching
     """
-    # Input validation
-    if not username_or_org or not username_or_org.strip():
-        console.print("[red]Error: Username or organization name cannot be empty[/red]")
-        raise click.ClickException("Username or organization name is required")
-
-    if limit is not None and limit < -1:
-        console.print("[red]Error: Limit must be -1 (unlimited) or non-negative[/red]")
-        raise click.ClickException("Invalid limit value")
-
-    if public_only and private_only:
-        console.print(
-            "[red]Error: Cannot specify both --public-only and --private-only[/red]"
-        )
-        raise click.ClickException("Conflicting filter options")
-
     try:
         # Configure cache settings
         cache_dir_val: Optional[str] = None if no_cache else cache_dir
         cache_ttl_val = 0 if no_cache else cache_ttl
 
+        # Initialize API and service
         api = GitHubAPI(token, cache_dir=cache_dir_val, cache_ttl=cache_ttl_val)
+        service = RepositoryService(api)
+
+        # Validate inputs
+        service.validate_inputs(username_or_org, limit, public_only, private_only)
 
         logger.info(
             "Searching repositories for %s: %s",
@@ -277,46 +285,30 @@ def search(
             limit_val = 10000  # Unlimited - set very high limit
         else:
             limit_val = limit
-        stats = api.get_repo_stats(
-            username_or_org, is_organization=org, limit=limit_val
+
+        # Search repositories using service
+        filtered_repos = service.search_repositories(
+            username_or_org,
+            is_organization=org,
+            language=language,
+            min_stars=min_stars,
+            min_forks=min_forks,
+            public_only=public_only,
+            private_only=private_only,
+            limit=limit_val,
+            sort_field=sort,
         )
 
-        if not stats:
+        if not filtered_repos:
             console.print("[red]No repositories found or error occurred.[/red]")
             return
-
-        repos = stats["repositories"]
-
-        # Apply filters
-        filtered_repos = repos
-
-        if language:
-            filtered_repos = [
-                r
-                for r in filtered_repos
-                if r.language and r.language.lower() == language.lower()
-            ]
-
-        if min_stars:
-            filtered_repos = [
-                r for r in filtered_repos if r.stargazers_count >= min_stars
-            ]
-
-        if min_forks:
-            filtered_repos = [r for r in filtered_repos if r.forks_count >= min_forks]
-
-        if public_only:
-            filtered_repos = [r for r in filtered_repos if not r.private]
-
-        if private_only:
-            filtered_repos = [r for r in filtered_repos if r.private]
 
         # Apply limit if specified
         if limit:
             filtered_repos = filtered_repos[:limit]
 
         logger.info("Found %d repositories matching criteria", len(filtered_repos))
-        _display_table(filtered_repos, username_or_org, org)
+        display_table(filtered_repos, username_or_org, org)
 
     except ValueError as e:
         error_msg = str(e)
@@ -352,69 +344,6 @@ def search(
         raise click.ClickException(f"Unexpected error: {e}")
 
 
-def _display_summary(stats: dict, username_or_org: str, is_org: bool) -> None:
-    """Display repository summary statistics."""
-    entity_type = "Organization" if is_org else "User"
-
-    summary_text = f"""
-[bold]{entity_type}:[/bold] {username_or_org}
-
-[bold]Repository Statistics:[/bold]
-• Total Repositories: {stats['total_repositories']}
-• Public Repositories: {stats['public_repositories']}
-• Private Repositories: {stats['private_repositories']}
-• Archived Repositories: {stats['archived_repositories']}
-
-[bold]Activity Statistics:[/bold]
-• Total Stars: {stats['total_stars']:,}
-• Total Forks: {stats['total_forks']:,}
-• Total Size: {stats['total_size_mb']:.2f} MB
-
-[bold]Top Languages:[/bold]
-"""
-
-    for lang, count in stats["top_languages"]:
-        summary_text += f"• {lang}: {count} repositories\n"
-
-    panel = Panel(summary_text.strip(), title="Repository Summary", border_style="blue")
-    console.print(panel)
-
-
-def _display_table(repos: list, username_or_org: str, is_org: bool) -> None:
-    """Display repositories in a table format."""
-    if not repos:
-        console.print("[yellow]No repositories to display[/yellow]")
-        return
-
-    table = Table(
-        title=f"Repositories for {'Organization' if is_org else 'User'}: "
-        f"{username_or_org}"
-    )
-
-    table.add_column("Name", style="cyan", no_wrap=True)
-    table.add_column("Language", style="magenta")
-    table.add_column("Stars", justify="right", style="green")
-    table.add_column("Forks", justify="right", style="blue")
-    table.add_column("Size (MB)", justify="right", style="yellow")
-    table.add_column("Private", justify="center")
-    table.add_column("Archived", justify="center")
-    table.add_column("Updated", style="dim")
-
-    for repo in repos:
-        table.add_row(
-            repo.name,
-            repo.language or "N/A",
-            str(repo.stargazers_count),
-            str(repo.forks_count),
-            f"{repo.size / 1024:.1f}",
-            "✓" if repo.private else "✗",
-            "✓" if repo.archived else "✗",
-            repo.updated_at[:10] if repo.updated_at else "N/A",
-        )
-
-    console.print(table)
-
-
 @main.command()
 def version() -> None:
     """Show detailed version information."""
@@ -429,32 +358,6 @@ License: [green]{__license__}[/green]
     console.print(
         Panel(version_info.strip(), title="Version Information", border_style="blue")
     )
-
-
-def _display_json(repos: list) -> None:
-    """Display repositories in JSON format."""
-    import json
-    import re
-
-    repos_data = []
-    for repo in repos:
-        repo_dict = repo.to_dict()
-
-        # Clean control characters from string fields
-        for key, value in repo_dict.items():
-            if isinstance(value, str):
-                # Replace control characters with spaces
-                repo_dict[key] = re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", value)
-                # Collapse multiple spaces
-                repo_dict[key] = re.sub(r"\s+", " ", repo_dict[key]).strip()
-
-        repos_data.append(repo_dict)
-
-    # Output clean JSON with proper escaping
-    json_str = json.dumps(
-        repos_data, indent=2, ensure_ascii=False, separators=(",", ": ")
-    )
-    print(json_str)
 
 
 if __name__ == "__main__":

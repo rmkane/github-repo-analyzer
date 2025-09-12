@@ -12,8 +12,16 @@ from github_repo_analyzer.models import Owner, Repository
 class TestGitHubAPI:
     """Test cases for GitHubAPI class."""
 
-    def test_init_with_token(self):
+    @patch("github_repo_analyzer.api.Github")
+    def test_init_with_token(self, mock_github_class):
         """Test initialization with token."""
+        # Mock the connection test
+        mock_github = Mock()
+        mock_user = Mock()
+        mock_user.login = "test_user"
+        mock_github.get_user.return_value = mock_user
+        mock_github_class.return_value = mock_github
+
         api = GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
         assert api.token == "test_token"
         assert api.github is not None
@@ -24,8 +32,16 @@ class TestGitHubAPI:
             with pytest.raises(ValueError, match="GitHub token is required"):
                 GitHubAPI()
 
-    def test_init_with_env_token(self):
+    @patch("github_repo_analyzer.api.Github")
+    def test_init_with_env_token(self, mock_github_class):
         """Test initialization with token from environment."""
+        # Mock the connection test
+        mock_github = Mock()
+        mock_user = Mock()
+        mock_user.login = "test_user"
+        mock_github.get_user.return_value = mock_user
+        mock_github_class.return_value = mock_github
+
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token"}):
             api = GitHubAPI()
             assert api.token == "env_token"
@@ -87,10 +103,8 @@ class TestGitHubAPI:
         mock_github.get_user.side_effect = GithubException(500, "API Error")
         mock_github_class.return_value = mock_github
 
-        api = GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
-        repos = api.get_user_repos("testuser")
-
-        assert repos == []
+        with pytest.raises(ValueError, match="GitHub API error"):
+            GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
 
     @patch("github_repo_analyzer.api.Github")
     def test_get_org_repos_success(self, mock_github_class):

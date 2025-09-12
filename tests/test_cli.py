@@ -88,7 +88,7 @@ class TestCLIIntegration:
                 "search",
                 "octocat",
                 "--language",
-                "Python",
+                "HTML",
                 "--limit",
                 "2",
                 "--token",
