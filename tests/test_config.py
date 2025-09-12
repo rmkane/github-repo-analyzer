@@ -143,16 +143,18 @@ class TestConfig:
 class TestConfigFunctions:
     """Test cases for configuration functions."""
 
+    @patch.dict(os.environ, {"GITHUB_TOKEN": "test_token"})
     def test_get_config(self):
         """Test get_config function."""
         config = get_config()
         assert isinstance(config, Config)
-        assert config.github_token is not None  # Should have a token from environment
+        assert config.github_token == "test_token"
 
+    @patch.dict(os.environ, {"GITHUB_TOKEN": "test_token"})
     def test_create_config_default(self):
         """Test create_config with default parameters."""
         config = create_config()
-        assert config.github_token is not None  # Should have a token from environment
+        assert config.github_token == "test_token"
         assert config.cache.directory == ".cache"
         assert config.cache.enabled is True
 
