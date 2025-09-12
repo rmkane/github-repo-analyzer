@@ -2,58 +2,17 @@
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from github import Auth, Github
 from github.GithubException import GithubException
 
-from .models import Owner, Repository
+from .models import Repository
 
 logger = logging.getLogger(__name__)
 
 
-def _pygithub_to_dict(repo: Any) -> Dict[str, Any]:
-    """Convert PyGithub Repository object to dictionary for Pydantic."""
-    # Get all simple attributes that don't need custom mapping
-    simple_fields = [
-        "name",
-        "full_name",
-        "description",
-        "html_url",
-        "clone_url",
-        "ssh_url",
-        "language",
-        "stargazers_count",
-        "forks_count",
-        "open_issues_count",
-        "size",
-        "private",
-        "archived",
-        "disabled",
-    ]
-
-    # Map simple fields automatically using **kwargs approach
-    data = {field: getattr(repo, field) for field in simple_fields}
-
-    # Only handle fields that need custom processing
-    data.update(
-        {
-            "created_at": repo.created_at.isoformat() if repo.created_at else "",
-            "updated_at": repo.updated_at.isoformat() if repo.updated_at else "",
-            "pushed_at": repo.pushed_at.isoformat() if repo.pushed_at else None,
-            "topics": [],  # Skip topics to avoid extra API calls
-            "license": None,  # Skip license to avoid extra API calls
-            "owner": Owner(
-                login=repo.owner.login,
-                id=repo.owner.id,
-                type=repo.owner.type,
-                html_url=repo.owner.html_url,
-                avatar_url=repo.owner.avatar_url,
-            ),
-        }
-    )
-
-    return data
+# Removed the helper functions - now using Repository.from_pygithub() for DRY approach
 
 
 class GitHubAPI:
@@ -108,10 +67,7 @@ class GitHubAPI:
             end_idx = start_idx + per_page
             page_repos = repos_list[start_idx:end_idx]
 
-            return [
-                Repository.model_validate(_pygithub_to_dict(repo))
-                for repo in page_repos
-            ]
+            return [Repository.from_pygithub(repo) for repo in page_repos]
         except GithubException as e:
             logger.error("Error fetching repositories for %s: %s", username, e)
             if e.status == 401:
@@ -142,10 +98,7 @@ class GitHubAPI:
             end_idx = start_idx + per_page
             page_repos = repos_list[start_idx:end_idx]
 
-            return [
-                Repository.model_validate(_pygithub_to_dict(repo))
-                for repo in page_repos
-            ]
+            return [Repository.from_pygithub(repo) for repo in page_repos]
         except GithubException as e:
             logger.error(
                 "Error fetching repositories for organization %s: %s", org_name, e
@@ -180,7 +133,7 @@ class GitHubAPI:
             for i, repo in enumerate(repos):
                 if i >= limit:
                     break
-                repo_list.append(Repository.model_validate(_pygithub_to_dict(repo)))
+                repo_list.append(Repository.from_pygithub(repo))
 
             logger.info(f"Fetched {len(repo_list)} repositories for {username_or_org}")
             return repo_list

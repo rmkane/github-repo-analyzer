@@ -60,7 +60,12 @@ def main(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     default="table",
     help="Output format",
 )
-@click.option("--limit", "-l", type=int, help="Limit number of repositories to show")
+@click.option(
+    "--limit",
+    "-l",
+    type=int,
+    help="Limit number of repositories to show (default: 100, use -1 for all)",
+)
 @click.option(
     "--cache-dir", default=".cache", help="Directory for cache files (default: .cache)"
 )
@@ -100,8 +105,14 @@ def analyze(
             username_or_org,
         )
 
-        # Use limit if provided, otherwise default to 100
-        limit_val = limit if limit is not None else 100
+        # Use limit if provided, otherwise use API default (100)
+        # Use -1 to mean unlimited (all repositories), 0 means actually 0
+        if limit is None:
+            limit_val = 100  # Default to GitHub API max per page
+        elif limit == -1:
+            limit_val = 10000  # Unlimited - set very high limit
+        else:
+            limit_val = limit
         stats = api.get_repo_stats(
             username_or_org, is_organization=org, limit=limit_val
         )
@@ -142,7 +153,11 @@ def analyze(
 @click.option("--min-forks", type=int, help="Minimum number of forks")
 @click.option("--public-only", is_flag=True, help="Show only public repositories")
 @click.option("--private-only", is_flag=True, help="Show only private repositories")
-@click.option("--limit", type=int, help="Limit number of repositories to show")
+@click.option(
+    "--limit",
+    type=int,
+    help="Limit number of repositories to show (default: 100, use -1 for all)",
+)
 @click.option(
     "--cache-dir", default=".cache", help="Directory for cache files (default: .cache)"
 )
@@ -186,8 +201,14 @@ def search(
             username_or_org,
         )
 
-        # Use limit if provided, otherwise default to 100
-        limit_val = limit if limit is not None else 100
+        # Use limit if provided, otherwise use API default (100)
+        # Use -1 to mean unlimited (all repositories), 0 means actually 0
+        if limit is None:
+            limit_val = 100  # Default to GitHub API max per page
+        elif limit == -1:
+            limit_val = 10000  # Unlimited - set very high limit
+        else:
+            limit_val = limit
         stats = api.get_repo_stats(
             username_or_org, is_organization=org, limit=limit_val
         )

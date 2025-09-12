@@ -50,7 +50,7 @@ ARGUMENTS:
 OPTIONS:
     -h, --help      Show this help message
     -o, --org       Treat USERNAME as an organization name
-    -l, --limit N   Limit number of repositories (default: no limit)
+    -l, --limit N   Limit number of repositories (default: 100, use -1 for all)
     -t, --token     GitHub personal access token (or set GITHUB_TOKEN env var)
     --no-cache      Disable caching
     --cache-dir DIR Custom cache directory (default: .cache)
@@ -59,9 +59,11 @@ OPTIONS:
     --verbose       Enable verbose output
 
 EXAMPLES:
-    $0 rmkane
+    $0 rmkane                    # Get 100 repositories (default)
     $0 microsoft --org --limit 50
     $0 octocat --limit 10 --no-cache
+    $0 rmkane --limit 0          # Get 0 repositories (empty result)
+    $0 rmkane --limit -1         # Get all repositories
     $0 myuser --token \$GITHUB_TOKEN --verbose
 
 ENVIRONMENT VARIABLES:

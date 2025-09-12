@@ -1,5 +1,6 @@
 """Tests for the GitHub API client."""
 
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
@@ -49,12 +50,9 @@ class TestGitHubAPI:
         mock_repo.forks_count = 5
         mock_repo.open_issues_count = 2
         mock_repo.size = 1024
-        mock_repo.created_at = Mock()
-        mock_repo.created_at.isoformat.return_value = "2023-01-01T00:00:00Z"
-        mock_repo.updated_at = Mock()
-        mock_repo.updated_at.isoformat.return_value = "2023-01-02T00:00:00Z"
-        mock_repo.pushed_at = Mock()
-        mock_repo.pushed_at.isoformat.return_value = "2023-01-02T00:00:00Z"
+        mock_repo.created_at = datetime(2023, 1, 1, 0, 0, 0)
+        mock_repo.updated_at = datetime(2023, 1, 2, 0, 0, 0)
+        mock_repo.pushed_at = datetime(2023, 1, 2, 0, 0, 0)
         mock_repo.private = False
         mock_repo.archived = False
         mock_repo.disabled = False
@@ -114,12 +112,9 @@ class TestGitHubAPI:
         mock_repo.forks_count = 10
         mock_repo.open_issues_count = 1
         mock_repo.size = 2048
-        mock_repo.created_at = Mock()
-        mock_repo.created_at.isoformat.return_value = "2023-01-01T00:00:00Z"
-        mock_repo.updated_at = Mock()
-        mock_repo.updated_at.isoformat.return_value = "2023-01-02T00:00:00Z"
-        mock_repo.pushed_at = Mock()
-        mock_repo.pushed_at.isoformat.return_value = "2023-01-02T00:00:00Z"
+        mock_repo.created_at = datetime(2023, 1, 1, 0, 0, 0)
+        mock_repo.updated_at = datetime(2023, 1, 2, 0, 0, 0)
+        mock_repo.pushed_at = datetime(2023, 1, 2, 0, 0, 0)
         mock_repo.private = False
         mock_repo.archived = False
         mock_repo.disabled = False
