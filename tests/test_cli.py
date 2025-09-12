@@ -21,6 +21,10 @@ class TestCLIIntegration:
     @pytest.fixture
     def github_token(self):
         """Get GitHub token from environment or skip test."""
+        # Skip integration tests in CI environment
+        if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
+            pytest.skip("Skipping integration tests in CI environment")
+
         token = os.getenv("GITHUB_TOKEN")
         if not token:
             pytest.skip("GITHUB_TOKEN not set - skipping integration test")

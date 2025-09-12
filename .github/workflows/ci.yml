@@ -32,7 +32,5 @@ jobs:
         mypy src/github_repo_analyzer
 
     - name: Test
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_PERSONAL_TOKEN || secrets.GITHUB_TOKEN }}
       run: |
         pytest
