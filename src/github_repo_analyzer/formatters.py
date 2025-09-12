@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .models import Repository
+from github_repo_analyzer.core import Repository
 
 console = Console()
 

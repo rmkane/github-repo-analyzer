@@ -3,8 +3,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from .api import GitHubAPI
-from .models import Repository
+from github_repo_analyzer.core.api import GitHubAPI
+from github_repo_analyzer.core.models import Repository
 
 logger = logging.getLogger(__name__)
 

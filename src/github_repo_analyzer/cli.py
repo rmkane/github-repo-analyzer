@@ -10,10 +10,15 @@ from rich.console import Console
 from rich.panel import Panel
 
 # Import version information from package
-from . import __author__, __email__, __license__, __repository__, __version__
-from .api import GitHubAPI
-from .formatters import display_json, display_summary, display_table
-from .services import RepositoryService
+from github_repo_analyzer import (
+    __author__,
+    __email__,
+    __license__,
+    __repository__,
+    __version__,
+)
+from github_repo_analyzer.core import GitHubAPI, RepositoryService
+from github_repo_analyzer.formatters import display_json, display_summary, display_table
 
 # Load environment variables
 load_dotenv()

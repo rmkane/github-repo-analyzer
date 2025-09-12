@@ -9,7 +9,7 @@ import requests
 from github import Auth, Github
 from github.GithubException import GithubException
 
-from .models import Repository
+from github_repo_analyzer.core.models import Repository
 
 logger = logging.getLogger(__name__)
 

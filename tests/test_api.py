@@ -5,14 +5,13 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from github_repo_analyzer.api import GitHubAPI
-from github_repo_analyzer.models import Owner, Repository
+from github_repo_analyzer.core import GitHubAPI, Owner, Repository
 
 
 class TestGitHubAPI:
     """Test cases for GitHubAPI class."""
 
-    @patch("github_repo_analyzer.api.Github")
+    @patch("github_repo_analyzer.core.api.Github")
     def test_init_with_token(self, mock_github_class):
         """Test initialization with token."""
         # Mock the connection test
@@ -32,7 +31,7 @@ class TestGitHubAPI:
             with pytest.raises(ValueError, match="GitHub token is required"):
                 GitHubAPI()
 
-    @patch("github_repo_analyzer.api.Github")
+    @patch("github_repo_analyzer.core.api.Github")
     def test_init_with_env_token(self, mock_github_class):
         """Test initialization with token from environment."""
         # Mock the connection test
@@ -46,7 +45,7 @@ class TestGitHubAPI:
             api = GitHubAPI()
             assert api.token == "env_token"
 
-    @patch("github_repo_analyzer.api.Github")
+    @patch("github_repo_analyzer.core.api.Github")
     def test_get_user_repos_success(self, mock_github_class):
         """Test successful user repos retrieval."""
         # Mock PyGithub objects
@@ -94,7 +93,7 @@ class TestGitHubAPI:
         assert repos[0].name == "test-repo"
         assert repos[0].language == "Python"
 
-    @patch("github_repo_analyzer.api.Github")
+    @patch("github_repo_analyzer.core.api.Github")
     def test_get_user_repos_error(self, mock_github_class):
         """Test user repos retrieval with error."""
         from github.GithubException import GithubException
@@ -106,7 +105,7 @@ class TestGitHubAPI:
         with pytest.raises(ValueError, match="GitHub API error"):
             GitHubAPI("test_token", cache_dir=None)  # Disable caching for test
 
-    @patch("github_repo_analyzer.api.Github")
+    @patch("github_repo_analyzer.core.api.Github")
     def test_get_org_repos_success(self, mock_github_class):
         """Test successful organization repos retrieval."""
         # Mock PyGithub objects
