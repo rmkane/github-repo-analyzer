@@ -87,8 +87,20 @@ docker-shell: ## Run interactive shell in Docker container
 	docker run --rm -it -e GITHUB_TOKEN=$(GITHUB_TOKEN) github-repo-analyzer /bin/bash
 
 # Documentation targets
-docs: ## Generate documentation (if using sphinx)
-	@echo "Documentation generation not implemented yet"
+docs: ## Generate documentation with MkDocs
+	venv/bin/python scripts/gen_ref_pages.py
+	venv/bin/mkdocs build
+
+docs-serve: ## Serve documentation locally
+	venv/bin/python scripts/gen_ref_pages.py
+	venv/bin/mkdocs serve
+
+docs-deploy: ## Deploy documentation to GitHub Pages
+	venv/bin/python scripts/gen_ref_pages.py
+	venv/bin/mkdocs gh-deploy
+
+docs-install: ## Install documentation dependencies
+	venv/bin/pip install -e ".[docs]"
 
 # Release targets
 check-release: ## Check if ready for release
