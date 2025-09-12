@@ -90,8 +90,26 @@ def analyze(
 ) -> None:
     """Analyze repositories for a GitHub user or organization.
 
-    USERNAME_OR_ORG: GitHub username or organization name
+    Args:
+        ctx: Click context
+        username_or_org: GitHub username or organization name
+        org: Whether the input is an organization
+        token: GitHub personal access token
+        output: Output format (table, json, summary)
+        limit: Maximum number of repositories to fetch
+        cache_dir: Cache directory
+        cache_ttl: Cache time-to-live in seconds
+        no_cache: Whether to disable caching
     """
+    # Input validation
+    if not username_or_org or not username_or_org.strip():
+        console.print("[red]Error: Username or organization name cannot be empty[/red]")
+        raise click.ClickException("Username or organization name is required")
+
+    if limit is not None and limit < -1:
+        console.print("[red]Error: Limit must be -1 (unlimited) or non-negative[/red]")
+        raise click.ClickException("Invalid limit value")
+
     try:
         # Configure cache settings
         cache_dir_val: Optional[str] = None if no_cache else cache_dir
@@ -133,15 +151,37 @@ def analyze(
             _display_table(repos, username_or_org, org)
 
     except ValueError as e:
-        console.print(f"[red]Error: {e}[/red]")
-        console.print(
-            "[yellow]Tip: Set GITHUB_TOKEN environment variable or use "
-            "--token option[/yellow]"
-        )
-        raise click.ClickException(str(e))
+        error_msg = str(e)
+        if "token" in error_msg.lower():
+            console.print(f"[red]Authentication Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Set GITHUB_TOKEN environment variable or use "
+                "--token option[/yellow]"
+            )
+        elif "rate limit" in error_msg.lower():
+            console.print(f"[red]Rate Limit Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Wait a few minutes before trying again, or use a "
+                "personal access token for higher limits[/yellow]"
+            )
+        elif "not found" in error_msg.lower():
+            console.print(f"[red]Not Found Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Check the username or organization name is "
+                "correct[/yellow]"
+            )
+        elif "timeout" in error_msg.lower() or "connection" in error_msg.lower():
+            console.print(f"[red]Network Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Check your internet connection and try again[/yellow]"
+            )
+        else:
+            console.print(f"[red]Error: {error_msg}[/red]")
+        raise click.ClickException(error_msg)
     except Exception as e:
         console.print(f"[red]Unexpected error: {e}[/red]")
-        raise click.ClickException(str(e))
+        logger.exception("Unexpected error in analyze command")
+        raise click.ClickException(f"Unexpected error: {e}")
 
 
 @main.command()
@@ -186,8 +226,36 @@ def search(
 ) -> None:
     """Search and filter repositories for a GitHub user or organization.
 
-    USERNAME_OR_ORG: GitHub username or organization name
+    Args:
+        ctx: Click context
+        username_or_org: GitHub username or organization name
+        org: Whether the input is an organization
+        token: GitHub personal access token
+        language: Filter by programming language
+        min_stars: Minimum number of stars
+        min_forks: Minimum number of forks
+        public_only: Show only public repositories
+        private_only: Show only private repositories
+        limit: Maximum number of repositories to fetch
+        cache_dir: Cache directory
+        cache_ttl: Cache time-to-live in seconds
+        no_cache: Whether to disable caching
     """
+    # Input validation
+    if not username_or_org or not username_or_org.strip():
+        console.print("[red]Error: Username or organization name cannot be empty[/red]")
+        raise click.ClickException("Username or organization name is required")
+
+    if limit is not None and limit < -1:
+        console.print("[red]Error: Limit must be -1 (unlimited) or non-negative[/red]")
+        raise click.ClickException("Invalid limit value")
+
+    if public_only and private_only:
+        console.print(
+            "[red]Error: Cannot specify both --public-only and --private-only[/red]"
+        )
+        raise click.ClickException("Conflicting filter options")
+
     try:
         # Configure cache settings
         cache_dir_val: Optional[str] = None if no_cache else cache_dir
@@ -251,15 +319,37 @@ def search(
         _display_table(filtered_repos, username_or_org, org)
 
     except ValueError as e:
-        console.print(f"[red]Error: {e}[/red]")
-        console.print(
-            "[yellow]Tip: Set GITHUB_TOKEN environment variable or use "
-            "--token option[/yellow]"
-        )
-        raise click.ClickException(str(e))
+        error_msg = str(e)
+        if "token" in error_msg.lower():
+            console.print(f"[red]Authentication Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Set GITHUB_TOKEN environment variable or use "
+                "--token option[/yellow]"
+            )
+        elif "rate limit" in error_msg.lower():
+            console.print(f"[red]Rate Limit Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Wait a few minutes before trying again, or use a "
+                "personal access token for higher limits[/yellow]"
+            )
+        elif "not found" in error_msg.lower():
+            console.print(f"[red]Not Found Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Check the username or organization name is "
+                "correct[/yellow]"
+            )
+        elif "timeout" in error_msg.lower() or "connection" in error_msg.lower():
+            console.print(f"[red]Network Error: {error_msg}[/red]")
+            console.print(
+                "[yellow]Tip: Check your internet connection and try again[/yellow]"
+            )
+        else:
+            console.print(f"[red]Error: {error_msg}[/red]")
+        raise click.ClickException(error_msg)
     except Exception as e:
         console.print(f"[red]Unexpected error: {e}[/red]")
-        raise click.ClickException(str(e))
+        logger.exception("Unexpected error in search command")
+        raise click.ClickException(f"Unexpected error: {e}")
 
 
 def _display_summary(stats: dict, username_or_org: str, is_org: bool) -> None:
