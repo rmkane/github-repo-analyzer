@@ -185,6 +185,6 @@ class TestCLIIntegration:
         # Should fail with helpful error message
         assert result.returncode != 0
         assert (
-            "GitHub token is required" in result.stdout
-            or "GITHUB_TOKEN" in result.stdout
+            "GitHub token is required" in result.stderr
+            or "GITHUB_TOKEN" in result.stderr
         )

@@ -55,6 +55,8 @@ class LoggingConfig:
     level: str = "INFO"
     format: str = "%(message)s"
     stream: str = "stderr"  # stderr or stdout
+    auto_log_file: bool = True  # Enable automatic log file creation
+    max_log_files: int = 7  # Keep 7 days of log files
 
 
 @dataclass
@@ -73,7 +75,7 @@ class Config:
     output: OutputConfig = field(default_factory=OutputConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         self._validate()
 

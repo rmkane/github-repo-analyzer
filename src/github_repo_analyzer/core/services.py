@@ -1,12 +1,16 @@
 """Service layer for GitHub Repository Analyzer."""
 
-import logging
 from typing import Any, Dict, List, Optional
 
 from github_repo_analyzer.core.api import GitHubAPI
 from github_repo_analyzer.core.models import Repository
+from github_repo_analyzer.logging_config import (
+    get_logger,
+    log_function_call,
+    log_performance,
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RepositoryService:
@@ -38,12 +42,26 @@ class RepositoryService:
         Returns:
             Dictionary containing repository statistics and sorted repositories
         """
+        log_function_call(
+            logger,
+            "analyze_repositories",
+            username_or_org=username_or_org,
+            is_organization=is_organization,
+            limit=limit,
+            sort_field=sort_field,
+        )
+
+        import time
+
+        start_time = time.time()
+
         # Get repository statistics
         stats = self.api.get_repo_stats(
             username_or_org, is_organization=is_organization, limit=limit
         )
 
         if not stats:
+            logger.warning("No statistics found for %s", username_or_org)
             return {}
 
         # Sort repositories
@@ -52,6 +70,11 @@ class RepositoryService:
 
         # Update stats with sorted repositories
         stats["repositories"] = sorted_repos
+
+        duration = time.time() - start_time
+        log_performance(logger, f"analyze repositories for {username_or_org}", duration)
+
+        logger.info("Analysis complete: %d repositories processed", len(sorted_repos))
         return stats
 
     def _apply_filters(

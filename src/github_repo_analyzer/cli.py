@@ -1,7 +1,5 @@
 """Command-line interface for GitHub Repository Analyzer."""
 
-import logging
-import sys
 from typing import Optional
 
 import click
@@ -20,18 +18,14 @@ from github_repo_analyzer import (
 from github_repo_analyzer.config import create_config, get_config
 from github_repo_analyzer.core import GitHubAPI, RepositoryService
 from github_repo_analyzer.formatters import display_json, display_summary, display_table
+from github_repo_analyzer.logging_config import get_logger, setup_logging
 from github_repo_analyzer.utils import clamp_limit
 
 # Load environment variables
 load_dotenv()
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    stream=sys.stderr,  # Log to stderr so it doesn't interfere with stdout
-)
-logger = logging.getLogger(__name__)
+# Set up logging (will be reconfigured based on CLI flags)
+logger = get_logger(__name__)
 
 console = Console()
 
@@ -40,21 +34,38 @@ console = Console()
 @click.version_option(version=__version__, prog_name="github-repo-analyzer")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress all logging output")
+@click.option("--log-file", help="Log to specific file (overrides automatic logging)")
+@click.option("--no-auto-log", is_flag=True, help="Disable automatic log file creation")
 @click.pass_context
-def main(ctx: click.Context, verbose: bool, quiet: bool) -> None:
+def main(
+    ctx: click.Context,
+    verbose: bool,
+    quiet: bool,
+    log_file: Optional[str],
+    no_auto_log: bool,
+) -> None:
     """GitHub Repository Analyzer - Analyze GitHub repositories for users and organizations."""  # noqa: E501
-    # Configure logging level based on options
-    if quiet:
-        logging.getLogger().setLevel(logging.ERROR)
-    elif verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
-
     # Store options in context for subcommands
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
+    ctx.obj["log_file"] = log_file
+    ctx.obj["no_auto_log"] = no_auto_log
+
+    # Set up professional logging
+    setup_logging(
+        config=get_config().logging,
+        log_file=log_file,
+        verbose=verbose,
+        quiet=quiet,
+        no_auto_log=no_auto_log,
+    )
+
+    # Get fresh logger after setup
+    global logger
+    logger = get_logger(__name__)
+
+    logger.info("GitHub Repository Analyzer started")
 
 
 @main.command()

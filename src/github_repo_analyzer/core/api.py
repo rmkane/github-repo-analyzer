@@ -1,6 +1,5 @@
 """GitHub API client for repository analysis."""
 
-import logging
 import os
 import time
 from typing import Any, Dict, List, Optional
@@ -10,8 +9,13 @@ from github import Auth, Github
 from github.GithubException import GithubException
 
 from github_repo_analyzer.core.models import Repository
+from github_repo_analyzer.logging_config import (
+    get_logger,
+    log_error_with_context,
+    log_performance,
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Removed the helper functions - now using Repository.from_pygithub() for DRY approach
@@ -37,29 +41,41 @@ class GitHubAPI:
             cache_ttl: Cache time-to-live in seconds (PyGithub handles this internally)
             timeout: Request timeout in seconds
         """
+        logger.debug("Initializing GitHub API client")
+
         self.token = token or os.getenv("GITHUB_TOKEN")
         if not self.token:
+            logger.error("No GitHub token provided")
             raise ValueError(
                 "GitHub token is required. Set GITHUB_TOKEN env var or pass "
                 "token parameter."
             )
 
         self.timeout = timeout
+        logger.debug("Using token: %s...", self.token[:8])
+        logger.debug(
+            "Cache directory: %s, TTL: %ds, Timeout: %ds", cache_dir, cache_ttl, timeout
+        )
 
         try:
+            logger.debug("Connecting to GitHub API")
             # PyGithub handles authentication, caching, and rate limiting automatically
             self.github = Github(auth=Auth.Token(self.token), timeout=timeout)
             # Test the connection
-            self.github.get_user().login
+            user = self.github.get_user()
+            logger.info("Connected to GitHub API as user: %s", user.login)
         except requests.exceptions.Timeout:
+            logger.error("GitHub API connection timeout after %ds", timeout)
             raise ValueError(
                 f"Connection to GitHub API timed out after {timeout} seconds"
             )
         except requests.exceptions.ConnectionError:
+            logger.error("GitHub API connection failed")
             raise ValueError(
                 "Failed to connect to GitHub API. Check your internet connection."
             )
         except GithubException as e:
+            log_error_with_context(logger, e, "GitHub API authentication")
             if e.status == 401:
                 raise ValueError(
                     "Invalid GitHub token. Please check your token and try again."
@@ -153,42 +169,69 @@ class GitHubAPI:
         Returns:
             List of Repository objects
         """
+        logger.debug("Fetching repositories for user: %s", username)
+
         if not username or not username.strip():
+            logger.error("Empty username provided")
             raise ValueError("Username cannot be empty")
 
         try:
+            start_time = time.time()
 
             def _get_repos() -> List[Any]:
+                logger.debug("Making API call to get user: %s", username)
                 user = self.github.get_user(username)
+                logger.debug("Getting repositories for user: %s", user.login)
                 all_repos = user.get_repos(sort="updated", direction="desc")
                 return list(all_repos)
 
             all_repos = self._retry_on_rate_limit(_get_repos)
+
+            duration = time.time() - start_time
+            log_performance(logger, f"fetch user {username} repositories", duration)
 
             # Manual pagination since PyGithub doesn't support per_page/page directly
             start_idx = (page - 1) * per_page
             end_idx = start_idx + per_page
             page_repos = all_repos[start_idx:end_idx]
 
-            return [Repository.from_pygithub(repo) for repo in page_repos]
+            logger.debug(
+                "Retrieved %d total repos, returning page %d (%d repos)",
+                len(all_repos),
+                page,
+                len(page_repos),
+            )
+
+            repos = [Repository.from_pygithub(repo) for repo in page_repos]
+            logger.info(
+                "Successfully fetched %d repositories for user: %s",
+                len(repos),
+                username,
+            )
+            return repos
+
         except GithubException as e:
-            logger.error("Error fetching repositories for %s: %s", username, e)
+            log_error_with_context(
+                logger, e, f"fetching repositories for user {username}"
+            )
             self._handle_github_exception(
                 e, f"fetching repositories for user {username}"
             )
             return []  # This line will never be reached, but satisfies mypy
         except requests.exceptions.Timeout:
+            logger.error("Request timeout while fetching repositories for %s", username)
             raise ValueError(
                 f"Request timed out while fetching repositories for {username}"
             )
         except requests.exceptions.ConnectionError:
+            logger.error("Network error while fetching repositories")
             raise ValueError(
                 "Network error while fetching repositories. Check your internet "
                 "connection."
             )
         except Exception as e:
-            logger.error(
-                "Unexpected error fetching repositories for %s: %s", username, e
+            log_error_with_context(
+                logger, e, f"fetching repositories for user {username}"
             )
             raise ValueError(f"Unexpected error fetching repositories: {e}")
 
