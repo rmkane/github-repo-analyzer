@@ -82,6 +82,7 @@ nav:
     - Logging: api/loggers.md
     - Formatters: api/formatters.md
     - Utils: api/utils.md
+    - Commands: api/commands.md
 
 # Extensions
 markdown_extensions:

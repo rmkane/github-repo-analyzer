@@ -4,3 +4,4 @@
 * [api/loggers.md](Loggers)
 * [api/formatters.md](Formatters)
 * [api/utils.md](Utils)
+* [api/commands.md](Commands)

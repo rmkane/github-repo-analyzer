@@ -13,6 +13,7 @@ modules = [
     "github_repo_analyzer.loggers",
     "github_repo_analyzer.formatters",
     "github_repo_analyzer.utils",
+    "github_repo_analyzer.commands",
 ]
 
 # Generate API reference pages
