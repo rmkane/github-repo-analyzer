@@ -1,5 +1,5 @@
-# Use Python 3.11 slim image as base
-FROM python:3.11-slim
+# Use Python 3.12 slim image as base
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -10,10 +10,12 @@ ENV PYTHONUNBUFFERED=1 \
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and security updates
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    bash \
+    && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files

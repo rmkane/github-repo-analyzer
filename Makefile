@@ -84,7 +84,7 @@ docker-run: ## Run Docker container (example: make docker-run ARGS="analyze micr
 	docker run --rm -e GITHUB_TOKEN=$(GITHUB_TOKEN) github-repo-analyzer $(ARGS)
 
 docker-shell: ## Run interactive shell in Docker container
-	docker run --rm -it -e GITHUB_TOKEN=$(GITHUB_TOKEN) github-repo-analyzer /bin/bash
+	docker run --rm -it --entrypoint /bin/bash -e GITHUB_TOKEN=$(GITHUB_TOKEN) github-repo-analyzer
 
 # Documentation targets
 docs: ## Generate documentation with MkDocs
